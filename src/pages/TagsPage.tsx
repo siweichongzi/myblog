@@ -1,8 +1,10 @@
+import { useState, useEffect } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { TagBadge } from '../components/blog';
 import { ArticleCard } from '../components/blog';
-import { tags, getTagBySlug } from '../data/tags';
-import { getArticlesByTag } from '../data/articles';
+import { tags } from '../data/tags';
+import { loadArticles } from '../data/store';
+import type { Article } from '../types';
 
 export function TagsPage() {
   return (
@@ -63,15 +65,27 @@ export function TagsPage() {
 
 export function TagDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+
   if (!slug) {
     return <Navigate to="/tags" replace />;
   }
 
-  const tag = getTagBySlug(slug);
-  const tagArticles = getArticlesByTag(slug);
+  const tag = tags.find((t) => t.slug.toLowerCase() === slug.toLowerCase());
 
-  if (!tag) {
+  useEffect(() => {
+    loadArticles().then((data) => {
+      setArticles(data);
+      setLoading(false);
+    });
+  }, [slug]);
+
+  const tagArticles = articles.filter((article) =>
+    article.tags.some((t) => t.toLowerCase() === slug.toLowerCase())
+  );
+
+  if (!tag && !loading) {
     return <Navigate to="/tags" replace />;
   }
 
@@ -80,14 +94,25 @@ export function TagDetailPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Header */}
         <div className="text-center mb-12">
-          <TagBadge name={tag.name} size="lg" active />
+          <TagBadge name={tag?.name || slug} size="lg" active />
           <p className="text-gray-600 mt-4">
-            共 {tag.count} 篇相关文章
+            共 {tagArticles.length} 篇相关文章
           </p>
         </div>
 
         {/* Articles Grid */}
-        {tagArticles.length > 0 ? (
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-surface rounded-xl border border-border overflow-hidden">
+                <div className="h-40 bg-gray-200 animate-pulse" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : tagArticles.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {tagArticles.map((article) => (
               <ArticleCard key={article.id} article={article} />

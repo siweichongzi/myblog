@@ -1,14 +1,22 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { ArticleCard } from '../components/blog';
 import { loadArticles } from '../data/store';
 import { tags } from '../data/tags';
+import type { Article } from '../types';
 
 export function ArticlesPage() {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
-  const articles = loadArticles();
+  useEffect(() => {
+    loadArticles().then((data) => {
+      setArticles(data);
+      setLoading(false);
+    });
+  }, []);
 
   const filteredArticles = useMemo(() => {
     return articles.filter((article) => {
@@ -19,7 +27,7 @@ export function ArticlesPage() {
         !selectedTag || article.tags.some((tag) => tag.toLowerCase() === selectedTag.toLowerCase());
       return matchesSearch && matchesTag;
     });
-  }, [searchQuery, selectedTag]);
+  }, [articles, searchQuery, selectedTag]);
 
   return (
     <div className="py-12 fade-in">
@@ -77,7 +85,19 @@ export function ArticlesPage() {
         </div>
 
         {/* Articles Grid */}
-        {filteredArticles.length > 0 ? (
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-surface rounded-xl border border-border overflow-hidden">
+                <div className="h-40 bg-gray-200 animate-pulse" />
+                <div className="p-5 space-y-3">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredArticles.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredArticles.map((article) => (
               <ArticleCard key={article.id} article={article} />

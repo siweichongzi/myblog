@@ -1,17 +1,44 @@
+import { useState, useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { Calendar, Clock, ArrowLeft, Share2 } from 'lucide-react';
 import { MarkdownRenderer, TableOfContents, TagBadge } from '../components/blog';
-import { loadArticles, getArticleBySlugFromStore } from '../data/store';
+import { loadArticles } from '../data/store';
+import type { Article } from '../types';
 
 export function ArticleDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const article = slug ? getArticleBySlugFromStore(slug) : undefined;
+  const [article, setArticle] = useState<Article | null>(null);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadArticles().then((data) => {
+      setArticles(data);
+      const found = data.find((a) => a.slug === slug);
+      setArticle(found || null);
+      setLoading(false);
+    });
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="py-12 fade-in">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="animate-pulse space-y-4">
+            <div className="h-4 bg-gray-200 rounded w-24" />
+            <div className="h-10 bg-gray-200 rounded w-3/4" />
+            <div className="h-4 bg-gray-200 rounded w-48" />
+            <div className="h-64 bg-gray-200 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!article) {
     return <Navigate to="/" replace />;
   }
 
-  const articles = loadArticles();
   const currentIndex = articles.findIndex((a) => a.slug === slug);
   const prevArticle = currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
   const nextArticle = currentIndex > 0 ? articles[currentIndex - 1] : null;

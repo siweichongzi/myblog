@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { ArticleCard } from '../components/blog';
@@ -6,7 +7,16 @@ import { loadArticles } from '../data/store';
 import { tags } from '../data/tags';
 
 export function HomePage() {
-  const articles = loadArticles();
+  const [articles, setArticles] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadArticles().then((data) => {
+      setArticles(data);
+      setLoading(false);
+    });
+  }, []);
+
   const featuredArticles = articles.slice(0, 3);
   const popularTags = tags.slice(0, 6);
 
@@ -77,11 +87,30 @@ export function HomePage() {
             </Link>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-xl border border-border overflow-hidden">
+                  <div className="h-40 bg-gray-200 animate-pulse" />
+                  <div className="p-5 space-y-3">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" />
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-full" />
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : featuredArticles.length === 0 ? (
+            <div className="text-center py-10 text-gray-400">
+              <p>暂无文章，<Link to="/admin/editor" className="text-primary underline">去写一篇</Link></p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredArticles.map((article) => (
+                <ArticleCard key={article.id} article={article} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

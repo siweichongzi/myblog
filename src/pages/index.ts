@@ -5,3 +5,4 @@ export { TagsPage, TagDetailPage } from './TagsPage';
 export { AboutPage } from './AboutPage';
 export { AdminPage } from './AdminPage';
 export { ArticleEditorPage } from './ArticleEditorPage';
+export { GitHubSettingsPage } from './GitHubSettingsPage';

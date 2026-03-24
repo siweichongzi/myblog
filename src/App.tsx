@@ -9,6 +9,7 @@ import {
   AboutPage,
   AdminPage,
   ArticleEditorPage,
+  GitHubSettingsPage,
 } from './pages';
 
 function App() {
@@ -26,9 +27,10 @@ function App() {
           {/* 管理后台（带导航栏） */}
           <Route path="admin" element={<AdminPage />} />
         </Route>
-        {/* 编辑器（全屏，不带导航栏） */}
+        {/* 编辑器和设置（全屏，不带导航栏） */}
         <Route path="/admin/editor" element={<ArticleEditorPage />} />
         <Route path="/admin/editor/:id" element={<ArticleEditorPage />} />
+        <Route path="/admin/github" element={<GitHubSettingsPage />} />
       </Routes>
     </BrowserRouter>
   );

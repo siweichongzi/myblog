@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, Eye, Calendar, Clock, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Eye, Calendar, Clock, Search, Github, AlertCircle } from 'lucide-react';
 import type { Article } from '../types';
-import { loadArticles, deleteArticle } from '../data/store';
+import { loadArticles, deleteArticle, isGitHubConfigured } from '../data/store';
 
 export function AdminPage() {
   const navigate = useNavigate();
   const [articles, setArticles] = useState<Article[]>([]);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+  const githubConfigured = isGitHubConfigured();
 
-  const refresh = () => setArticles(loadArticles());
+  const refresh = async () => {
+    setLoading(true);
+    const data = await loadArticles();
+    setArticles(data);
+    setLoading(false);
+  };
 
   useEffect(() => {
     refresh();
@@ -22,10 +30,12 @@ export function AdminPage() {
       a.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const handleDelete = (id: string) => {
-    deleteArticle(id);
+  const handleDelete = async (id: string) => {
+    setSaving(id);
+    await deleteArticle(id);
     setDeleteId(null);
-    refresh();
+    setSaving(null);
+    await refresh();
   };
 
   return (
@@ -37,14 +47,47 @@ export function AdminPage() {
             <h1 className="text-2xl font-serif font-bold text-gray-900">文章管理</h1>
             <p className="text-sm text-gray-500 mt-1">共 {articles.length} 篇文章</p>
           </div>
-          <button
-            onClick={() => navigate('/admin/editor')}
-            className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
-          >
-            <Plus size={18} />
-            写文章
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/admin/github')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors ${
+                githubConfigured
+                  ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                  : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200'
+              }`}
+              title={githubConfigured ? 'GitHub 已配置' : '点击配置 GitHub 云同步'}
+            >
+              <Github size={16} />
+              {githubConfigured ? '已同步' : '配置云同步'}
+            </button>
+            <button
+              onClick={() => navigate('/admin/editor')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-primary-dark transition-colors"
+            >
+              <Plus size={18} />
+              写文章
+            </button>
+          </div>
         </div>
+
+        {/* 未配置提示 */}
+        {!githubConfigured && !loading && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+            <AlertCircle size={18} className="text-yellow-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">尚未配置云同步</p>
+              <p className="text-xs text-yellow-700 mt-0.5">
+                当前文章只保存在本地浏览器，部署后别人看不到。
+                <button
+                  onClick={() => navigate('/admin/github')}
+                  className="underline ml-1 font-medium"
+                >
+                  立即配置 GitHub 云同步 →
+                </button>
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative mb-6">
@@ -58,86 +101,94 @@ export function AdminPage() {
           />
         </div>
 
-        {/* Article List */}
-        <div className="space-y-3">
-          {filtered.length === 0 ? (
-            <div className="text-center py-20 text-gray-400">
-              <p className="text-lg mb-2">暂无文章</p>
-              <p className="text-sm">点击「写文章」开始创作</p>
-            </div>
-          ) : (
-            filtered.map((article) => (
-              <div
-                key={article.id}
-                className="bg-surface border border-border rounded-xl p-5 flex gap-4 hover:border-primary/30 hover:shadow-sm transition-all"
-              >
-                {/* Cover Thumbnail */}
-                {article.coverImage ? (
-                  <img
-                    src={article.coverImage}
-                    alt=""
-                    className="w-20 h-16 object-cover rounded-lg flex-shrink-0 hidden sm:block"
-                  />
-                ) : (
-                  <div className="w-20 h-16 bg-gray-100 rounded-lg flex-shrink-0 hidden sm:flex items-center justify-center text-gray-300 text-2xl font-serif">
-                    B
-                  </div>
-                )}
+        {/* Loading */}
+        {loading ? (
+          <div className="text-center py-20 text-gray-400">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm">加载中...</p>
+          </div>
+        ) : (
+          /* Article List */
+          <div className="space-y-3">
+            {filtered.length === 0 ? (
+              <div className="text-center py-20 text-gray-400">
+                <p className="text-lg mb-2">暂无文章</p>
+                <p className="text-sm">点击「写文章」开始创作</p>
+              </div>
+            ) : (
+              filtered.map((article) => (
+                <div
+                  key={article.id}
+                  className="bg-surface border border-border rounded-xl p-5 flex gap-4 hover:border-primary/30 hover:shadow-sm transition-all"
+                >
+                  {/* Cover Thumbnail */}
+                  {article.coverImage ? (
+                    <img
+                      src={article.coverImage}
+                      alt=""
+                      className="w-20 h-16 object-cover rounded-lg flex-shrink-0 hidden sm:block"
+                    />
+                  ) : (
+                    <div className="w-20 h-16 bg-gray-100 rounded-lg flex-shrink-0 hidden sm:flex items-center justify-center text-gray-300 text-2xl font-serif">
+                      B
+                    </div>
+                  )}
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-gray-900 mb-1 truncate">{article.title}</h3>
-                  <p className="text-sm text-gray-500 mb-2 line-clamp-1">{article.summary}</p>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Calendar size={12} />
-                      {article.publishedAt}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} />
-                      {article.readingTime} 分钟
-                    </span>
-                    <div className="flex gap-1">
-                      {article.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 bg-primary/10 text-primary rounded-full"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-gray-900 mb-1 truncate">{article.title}</h3>
+                    <p className="text-sm text-gray-500 mb-2 line-clamp-1">{article.summary}</p>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <Calendar size={12} />
+                        {article.publishedAt}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} />
+                        {article.readingTime} 分钟
+                      </span>
+                      <div className="flex gap-1">
+                        {article.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-2 py-0.5 bg-primary/10 text-primary rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => navigate(`/post/${article.slug}`)}
-                    title="预览"
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
-                  >
-                    <Eye size={18} />
-                  </button>
-                  <button
-                    onClick={() => navigate(`/admin/editor/${article.id}`)}
-                    title="编辑"
-                    className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button
-                    onClick={() => setDeleteId(article.id)}
-                    title="删除"
-                    className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => navigate(`/post/${article.slug}`)}
+                      title="预览"
+                      className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button
+                      onClick={() => navigate(`/admin/editor/${article.id}`)}
+                      title="编辑"
+                      className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                    >
+                      <Edit2 size={18} />
+                    </button>
+                    <button
+                      onClick={() => setDeleteId(article.id)}
+                      title="删除"
+                      className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {/* Delete Confirm Modal */}
@@ -157,9 +208,10 @@ export function AdminPage() {
               </button>
               <button
                 onClick={() => handleDelete(deleteId)}
-                className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
+                disabled={!!saving}
+                className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-60"
               >
-                确认删除
+                {saving ? '删除中...' : '确认删除'}
               </button>
             </div>
           </div>

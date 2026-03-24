@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, Search, PenSquare } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { loadArticles } from '../../data/store';
 import type { Article } from '../../types';
 
@@ -15,17 +15,24 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Article[]>([]);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const allArticles = loadArticles();
-  const searchResults = searchQuery.length > 1
-    ? allArticles.filter(
-        (a: Article) =>
-          a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          a.summary.toLowerCase().includes(searchQuery.toLowerCase())
-      ).slice(0, 5)
-    : [];
+  useEffect(() => {
+    loadArticles().then((articles) => {
+      if (searchQuery.length > 1) {
+        const results = articles.filter(
+          (a: Article) =>
+            a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            a.summary.toLowerCase().includes(searchQuery.toLowerCase())
+        ).slice(0, 5);
+        setSearchResults(results);
+      } else {
+        setSearchResults([]);
+      }
+    });
+  }, [searchQuery]);
 
   return (
     <header className="sticky top-0 z-50 bg-surface/95 backdrop-blur-sm border-b border-border">

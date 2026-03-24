@@ -34,14 +34,16 @@ export function ArticleEditorPage() {
   // 编辑模式：加载已有文章
   useEffect(() => {
     if (isEdit && id) {
-      const article = loadArticles().find((a) => a.id === id);
-      if (article) {
-        setTitle(article.title);
-        setSummary(article.summary);
-        setContent(article.content);
-        setSelectedTags(article.tags);
-        setCoverImage(article.coverImage || '');
-      }
+      loadArticles().then((allArticles) => {
+        const article = allArticles.find((a) => a.id === id);
+        if (article) {
+          setTitle(article.title);
+          setSummary(article.summary);
+          setContent(article.content);
+          setSelectedTags(article.tags);
+          setCoverImage(article.coverImage || '');
+        }
+      });
     }
   }, [id, isEdit]);
 
@@ -172,6 +174,7 @@ export function ArticleEditorPage() {
 
     setSaving(true);
     try {
+      const allArticles = await loadArticles();
       const articleData = {
         title: title.trim(),
         summary: summary.trim() || title.trim(),
@@ -179,19 +182,28 @@ export function ArticleEditorPage() {
         tags: selectedTags,
         coverImage: coverImage.trim() || undefined,
         slug: isEdit
-          ? loadArticles().find((a) => a.id === id)?.slug || generateSlug(title)
+          ? allArticles.find((a) => a.id === id)?.slug || generateSlug(title)
           : generateSlug(title),
         publishedAt: new Date().toISOString().slice(0, 10),
         readingTime: estimateReadingTime(content),
       };
 
+      let success = false;
       if (isEdit && id) {
-        updateArticle(id, articleData);
+        const result = await updateArticle(id, articleData);
+        success = !!result;
       } else {
-        createArticle(articleData);
+        const result = await createArticle(articleData);
+        success = !!result;
       }
 
-      navigate('/admin');
+      if (success) {
+        navigate('/admin');
+      } else {
+        alert('保存失败！请检查是否已配置 GitHub 云同步。\n\n前往「管理」→「配置云同步」完成设置。');
+      }
+    } catch (err) {
+      alert('保存失败：' + (err instanceof Error ? err.message : '未知错误'));
     } finally {
       setSaving(false);
     }
